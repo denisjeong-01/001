@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="점심뽑기" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>점심뽑기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #111110;
+      --surface: #1c1c1a;
+      --surface2: #252522;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #f0ede6;
+      --text2: rgba(240,237,230,0.55);
+      --accent: #e8c547;
+      --accent2: #d4a843;
+      --red: #e85b4a;
+      --green: #4caf82;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; }
+
+    #app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Header */
+    .topbar {
+      padding: 16px 20px 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .topbar-title { font-family: 'Black Han Sans', sans-serif; font-size: 20px; letter-spacing: -0.5px; color: var(--accent); }
+    .topbar-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: 0;
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1; padding: 12px 0; text-align: center;
+      font-size: 13px; font-weight: 500; color: var(--text2);
+      cursor: pointer; border: none; background: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Panels */
+    .panel { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+    .panel.active { display: flex; }
+
+    /* ─── SPIN TAB ─── */
+    #panelSpin { align-items: center; justify-content: space-between; padding: 24px 20px; gap: 20px; }
+
+    .result-area {
+      width: 100%; background: var(--surface);
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius);
+      min-height: 160px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 28px 20px;
+      position: relative; overflow: hidden;
+    }
+    .result-area::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(232,197,71,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .result-placeholder { font-size: 15px; color: var(--text2); }
+    .result-name {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 32px; color: var(--text);
+      letter-spacing: -1px; line-height: 1.2;
+      transition: opacity 0.15s;
+    }
+    .result-name.flash { opacity: 0.2; }
+    .result-badge {
+      margin-top: 10px;
+      font-size: 12px; padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(232,197,71,0.12); color: var(--accent);
+      border: 0.5px solid rgba(232,197,71,0.25);
+    }
+    .result-rating { margin-top: 8px; font-size: 13px; color: var(--text2); }
+    .result-map {
+      margin-top: 12px;
+      font-size: 12px; color: var(--accent2);
+      text-decoration: none; display: flex; align-items: center; gap: 4px;
+    }
+
+    .spin-count { font-size: 12px; color: var(--text2); text-align: center; }
+
+    .btn-spin {
+      width: 100%; padding: 18px;
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 20px; letter-spacing: 1px;
+      background: var(--accent); color: #111;
+      border: none; border-radius: var(--radius);
+      cursor: pointer;
+      transition: transform 0.12s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-spin:active { transform: scale(0.97); background: var(--accent2); }
+    .btn-spin:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .active-count {
+      font-size: 12px; color: var(--text2); text-align: center; flex-shrink: 0;
+    }
+    .active-count span { color: var(--accent); font-weight: 700; }
+
+    /* ─── LIST TAB ─── */
+    #panelList { padding: 16px 20px; gap: 12px; }
+
+    .add-form {
+      display: flex; gap: 8px; flex-shrink: 0;
+    }
+    .add-input {
+      flex: 1; padding: 11px 14px;
+      background: var(--surface2); border: 0.5px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+      outline: none;
+    }
+    .add-input:focus { border-color: var(--accent); }
+    .add-input::placeholder { color: var(--text2); }
+    .btn-add {
+      padding: 11px 16px;
+      background: var(--accent); color: #111; font-weight: 700; font-size: 14px;
+      border: none; border-radius: var(--radius-sm); cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.1s, background 0.15s;
+    }
+    .btn-add:active { transform: scale(0.96); background: var(--accent2); }
+
+    .type-select {
+      display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap;
+    }
+    .type-chip {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+      border: 0.5px solid var(--border2); background: var(--surface2); color: var(--text2);
+      transition: all 0.15s;
+    }
+    .type-chip.sel { background: rgba(232,197,71,0.15); color: var(--accent); border-color: rgba(232,197,71,0.35); }
+
+    .list-header {
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .list-title { font-size: 13px; color: var(--text2); }
+    .btn-all { font-size: 12px; color: var(--accent2); background: none; border: none; cursor: pointer; }
+
+    .restaurant-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+    .r-item {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      transition: opacity 0.2s, border-color 0.2s;
+      animation: slideIn 0.25s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .r-item.off { opacity: 0.38; }
+    .r-item.off .r-name { text-decoration: line-through; }
+
+    .r-toggle {
+      width: 40px; height: 22px; border-radius: 11px;
+      background: var(--surface2); border: 0.5px solid var(--border2);
+      cursor: pointer; position: relative; flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .r-toggle::after {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--text2); top: 2px; left: 2px;
+      transition: left 0.2s, background 0.2s;
+    }
+    .r-item:not(.off) .r-toggle { background: rgba(76,175,130,0.2); border-color: rgba(76,175,130,0.4); }
+    .r-item:not(.off) .r-toggle::after { left: 20px; background: var(--green); }
+
+    .r-info { flex: 1; min-width: 0; }
+    .r-name { font-size: 15px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .r-meta { font-size: 11px; color: var(--text2); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+    .r-type-badge { font-size: 10px; padding: 1px 7px; border-radius: 10px; background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border); }
+
+    .btn-del {
+      background: none; border: none; cursor: pointer;
+      color: var(--text2); font-size: 16px; padding: 4px;
+      border-radius: 6px; flex-shrink: 0;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-del:active { color: var(--red); background: rgba(232,91,74,0.12); }
+
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      color: var(--text2); font-size: 14px; text-align: center; padding: 40px 20px;
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 4px; }
+
+    /* scrollbar */
+    .panel::-webkit-scrollbar { width: 4px; }
+    .panel::-webkit-scrollbar-track { background: transparent; }
+    .panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">🍱 점심뽑기</div>
+      <div class="topbar-sub">오늘 뭐 먹을지 고민 끝!</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('spin')">🎲 뽑기</button>
+    <button class="tab" onclick="switchTab('list')">📋 목록 관리</button>
+  </div>
+
+  <!-- SPIN PANEL -->
+  <div class="panel active" id="panelSpin">
+    <div class="result-area" id="resultArea">
+      <div class="result-placeholder" id="placeholder">버튼을 눌러<br>오늘의 점심을 뽑아보세요 🎯</div>
+      <div id="resultContent" style="display:none; width:100%;">
+        <div class="result-name" id="resultName"></div>
+        <div class="result-badge" id="resultBadge"></div>
+        <div class="result-rating" id="resultRating"></div>
+        <a class="result-map" id="resultMap" href="#" target="_blank">📍 지도에서 보기</a>
+      </div>
+    </div>
+
+    <div class="active-count" id="activeCount">목록에서 식당을 추가해주세요</div>
+
+    <button class="btn-spin" id="btnSpin" onclick="spin()">지금 뽑기!</button>
+  </div>
+
+  <!-- LIST PANEL -->
+  <div class="panel" id="panelList">
+    <div class="add-form">
+      <input class="add-input" id="nameInput" placeholder="식당 이름 입력..." />
+      <button class="btn-add" onclick="addItem()">추가</button>
+    </div>
+
+    <div class="type-select" id="typeSelect">
+      <div class="type-chip sel" data-type="한식" onclick="selectType(this)">🍚 한식</div>
+      <div class="type-chip" data-type="일식" onclick="selectType(this)">🍣 일식</div>
+      <div class="type-chip" data-type="중식" onclick="selectType(this)">🥢 중식</div>
+      <div class="type-chip" data-type="양식" onclick="selectType(this)">🍝 양식</div>
+      <div class="type-chip" data-type="분식" onclick="selectType(this)">🍜 분식</div>
+      <div class="type-chip" data-type="패스트푸드" onclick="selectType(this)">🍔 패스트푸드</div>
+      <div class="type-chip" data-type="기타" onclick="selectType(this)">🍽️ 기타</div>
+    </div>
+
+    <div class="list-header">
+      <span class="list-title" id="listTitle">0개</span>
+      <button class="btn-all" onclick="toggleAll()">전체 켜기/끄기</button>
+    </div>
+
+    <div class="restaurant-list" id="restaurantList">
+      <div class="empty-state">
+        <div class="empty-icon">🍽️</div>
+        <div>아직 식당이 없어요</div>
+        <div style="font-size:12px; margin-top:4px;">위에서 맛집을 추가해보세요!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'lunch_pwa_v1';
+let restaurants = [];
+let selectedType = '한식';
+let spinCount = 0;
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    restaurants = Array.isArray(d) ? d : [];
+  } catch { restaurants = []; }
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(restaurants));
+}
+
+function selectType(el) {
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedType = el.dataset.type;
+}
+
+function addItem() {
+  const input = document.getElementById('nameInput');
+  const name = input.value.trim();
+  if (!name) return;
+  restaurants.push({ id: Date.now(), name, type: selectedType, enabled: true });
+  input.value = '';
+  save();
+  renderList();
+  updateActiveCount();
+}
+
+function deleteItem(id) {
+  restaurants = restaurants.filter(r => r.id !== id);
+  save();
+  renderList();
+  updateActiveCount();
+}
+
+function toggleItem(id) {
+  const r = restaurants.find(r => r.id === id);
+  if (r) { r.enabled = !r.enabled; save(); renderList(); updateActiveCount(); }
+}
+
+function toggleAll() {
+  const allOn = restaurants.every(r => r.enabled);
+  restaurants.forEach(r => r.enabled = !allOn);
+  save(); renderList(); updateActiveCount();
+}
+
+const TYPE_EMOJI = { '한식':'🍚','일식':'🍣','중식':'🥢','양식':'🍝','분식':'🍜','패스트푸드':'🍔','기타':'🍽️' };
+
+function renderList() {
+  const list = document.getElementById('restaurantList');
+  const title = document.getElementById('listTitle');
+  title.textContent = `총 ${restaurants.length}개`;
+
+  if (restaurants.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🍽️</div><div>아직 식당이 없어요</div><div style="font-size:12px;margin-top:4px;">위에서 맛집을 추가해보세요!</div></div>`;
+    return;
+  }
+
+  list.innerHTML = restaurants.map(r => `
+    <div class="r-item ${r.enabled ? '' : 'off'}" id="item-${r.id}">
+      <button class="r-toggle" onclick="toggleItem(${r.id})" aria-label="${r.enabled ? '제외' : '포함'}"></button>
+      <div class="r-info">
+        <div class="r-name">${r.name}</div>
+        <div class="r-meta">
+          <span class="r-type-badge">${TYPE_EMOJI[r.type] || '🍽️'} ${r.type}</span>
+        </div>
+      </div>
+      <button class="btn-del" onclick="deleteItem(${r.id})" aria-label="삭제">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateActiveCount() {
+  const active = restaurants.filter(r => r.enabled);
+  const el = document.getElementById('activeCount');
+  const btn = document.getElementById('btnSpin');
+  if (restaurants.length === 0) {
+    el.innerHTML = '📋 목록 탭에서 식당을 추가해주세요';
+    btn.disabled = true;
+  } else if (active.length === 0) {
+    el.innerHTML = '⚠️ 활성화된 식당이 없어요';
+    btn.disabled = true;
+  } else {
+    el.innerHTML = `<span>${active.length}개</span> 식당 중 랜덤 추첨`;
+    btn.disabled = false;
+  }
+}
+
+let spinning = false;
+function spin() {
+  if (spinning) return;
+  const active = restaurants.filter(r => r.enabled);
+  if (!active.length) return;
+
+  spinning = true;
+  const btn = document.getElementById('btnSpin');
+  btn.disabled = true;
+  btn.textContent = '뽑는 중...';
+
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultContent').style.display = 'block';
+
+  let ticks = 0;
+  const maxTicks = 16 + Math.floor(Math.random() * 10);
+  let delay = 60;
+
+  function tick() {
+    const r = active[Math.floor(Math.random() * active.length)];
+    const nameEl = document.getElementById('resultName');
+    nameEl.classList.add('flash');
+    setTimeout(() => {
+      nameEl.textContent = r.name;
+      nameEl.classList.remove('flash');
+    }, 60);
+    ticks++;
+    delay = Math.min(delay + 14, 380);
+    if (ticks < maxTicks) {
+      setTimeout(tick, delay);
+    } else {
+      const final = active[Math.floor(Math.random() * active.length)];
+      const nameEl = document.getElementById('resultName');
+      nameEl.textContent = final.name;
+      document.getElementById('resultBadge').textContent = `${TYPE_EMOJI[final.type] || ''} ${final.type}`;
+      document.getElementById('resultRating').textContent = '';
+      const mapEl = document.getElementById('resultMap');
+      mapEl.href = `https://maps.google.com/?q=${encodeURIComponent(final.name)}+서초구+서울`;
+      spinning = false;
+      btn.disabled = false;
+      btn.textContent = '다시 뽑기!';
+      spinCount++;
+    }
+  }
+  tick();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['spin', 'list'];
+    t.classList.toggle('active', names[i] === tab);
+  });
+  document.getElementById('panelSpin').classList.toggle('active', tab === 'spin');
+  document.getElementById('panelList').classList.toggle('active', tab === 'list');
+}
+
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addItem();
+});
+
+load();
+renderList();
+updateActiveCount();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
