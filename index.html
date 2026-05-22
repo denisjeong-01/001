@@ -441,7 +441,7 @@ renderList();
 updateActiveCount();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/001/sw.js', { scope: '/001/' }).then(r => console.log('SW ok', r.scope)).catch(e => console.log('SW err', e)); });
 }
 </script>
 </body>
